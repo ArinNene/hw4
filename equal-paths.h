@@ -26,4 +26,6 @@ struct Node {
  */
 bool equalPaths(Node * root);
 
+int heightTrace(Node * root, int measure);
+
 #endif

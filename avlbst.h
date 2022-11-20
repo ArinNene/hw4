@@ -138,9 +138,180 @@ protected:
     virtual void nodeSwap( AVLNode<Key,Value>* n1, AVLNode<Key,Value>* n2);
 
     // Add helper functions here
+    void insertFix(AVLNode<Key,Value>* n1, AVLNode<Key,Value>* n2);
+    void rotationFix(AVLNode<Key,Value>* n1, AVLNode<Key,Value>* n2, AVLNode<Key,Value>* n3);
+    void rotateLeft(AVLNode<Key,Value>* n1);
+    void rotateRight(AVLNode<Key,Value>* n1);
+    void removeFix(AVLNode<Key,Value>* current);
+
 
 
 };
+
+template<typename Key,typename Value>
+void AVLTree<Key, Value>::rotateLeft(AVLNode<Key,Value>* current) {
+    AVLNode<Key,Value>* parent = current->getParent();
+    AVLNode<Key, Value>* right = current->getRight();
+    if (current == this->root_) {
+        this->root_ = right;
+    }
+    AVLNode<Key,Value>* tempRotate;
+    if (right == NULL) {
+        return;
+    }
+    if (right->getLeft() == NULL) {
+        tempRotate = NULL;
+    }
+    else {
+        tempRotate = right->getLeft();
+    }
+    for (int i = 0; i < 1; i++) {
+        current->setRight(tempRotate);
+        current->setParent(right);
+    }
+    for (int i = 0; i < 1; i++) {
+        right->setParent(parent);
+        right->setLeft(current);
+    }
+    if (parent != NULL) {
+        if (parent->getRight() == current) {
+            parent->setLeft(right);
+        }
+        else if (parent->getLeft() == current) {
+            parent->setRight(right);
+        }
+    }
+    if (tempRotate == NULL) {
+        // do nothing
+    }
+    else if (tempRotate != NULL) {
+        tempRotate->setParent(current);
+    }
+}
+
+template<typename Key, typename Value>
+void AVLTree<Key, Value>::removeFix(AVLNode<Key,Value>* current) {
+    //Not done in time.
+}
+
+template<class Key,class Value>
+void AVLTree<Key, Value>::rotateRight(AVLNode<Key,Value>* current) {
+    AVLNode<Key,Value>* parent = current->getParent();
+    AVLNode<Key, Value>* left = current->getLeft();
+    if (current == this->root_) {
+        this->root_ = left;
+    }
+    AVLNode<Key,Value>* tempRotate;
+    if (left == NULL) {
+        return;
+    }
+    if (left->getRight() == NULL) {
+        tempRotate = NULL;
+    }
+    else {
+        tempRotate = left->getLeft();
+    }
+    for (int i = 0; i < 1; i++) {
+        current->setLeft(tempRotate);
+        current->setParent(left);
+    }
+    for (int i = 0; i < 1; i++) {
+        left->setParent(parent);
+        left->setRight(current);
+    }
+    if (parent != NULL) {
+        for (int i = 0; i < 1; i++) {
+            if (parent->getRight() == current) {
+                parent->setRight(left);
+            }
+            else if (parent->getLeft() == current) {
+                parent->setLeft(left);
+            }
+        }
+    }
+    if (tempRotate == NULL) {
+        // do nothing
+    }
+    else if (tempRotate != NULL) {
+        tempRotate->setParent(current);
+    }
+}
+
+template<typename Key,typename Value>
+void AVLTree<Key, Value>::rotationFix(AVLNode<Key,Value>* current, AVLNode<Key,Value>* parent, AVLNode<Key,Value>* leaf) {
+    /*CASES:
+    Needs left-right rotation, which has initial arrangement
+       current 
+      / 
+     parent
+      \ 
+       leaf
+    Then needs right-left rotation, which has initial arrangement
+        parent
+         \ 
+          current
+         /
+        leaf
+    Or needs left-left
+        parent
+           \ 
+            current
+              \ 
+              leaf
+     OR needs right-right
+          parent 
+            /
+       current
+         /
+       leaf */
+    if (current == parent->getLeft() && leaf == current->getRight()) { //left,then right rotation
+        rotateLeft(current);
+        rotateRight(parent);
+        leaf->setBalance(0);
+    }
+    else if (current == parent->getRight() && leaf == current->getLeft()) { //right-left
+        rotateRight(current);
+        rotateLeft(parent);
+        leaf->setBalance(0);
+    }
+    else if (current == parent->getRight() && leaf == current->getRight()) { //right
+        rotateLeft(parent);
+        parent->setBalance(0);
+        current->setBalance(0);
+    }
+    else {
+        rotateRight(parent);
+        parent->setBalance(0);
+        current->setBalance(0);
+    }
+}
+template<typename Key, typename Value>
+void AVLTree<Key, Value>::insertFix(AVLNode<Key,Value>* current, AVLNode<Key,Value>* fixedNode) {
+    //base case: current is null OR current's parent doesn't exist.
+    //in order to avoid bad access.
+    if (current == NULL || current->getParent() == NULL) {
+        return;
+    }
+    else {
+        AVLNode<Key,Value>* parent = current->getParent();
+        if (current != parent->getLeft()) {
+            parent->updateBalance(1);
+        }
+        else {
+            parent->updateBalance(-1);
+        }
+        if (parent->getBalance() == 0) { //if node is balanced, just return.
+            return;
+        }
+        if (parent->getBalance() != 0) {
+            insertFix(parent,current);
+        }
+        else {
+            rotationFix(current,parent,fixedNode);
+        }
+    }
+
+}
 
 /*
  * Recall: If key is already in the tree, you should 
@@ -148,8 +319,56 @@ protected:
  */
 template<class Key, class Value>
 void AVLTree<Key, Value>::insert (const std::pair<const Key, Value> &new_item)
-{
-    // TODO
+{ //modifying code used in bst for use with avl
+    Value operativeValue = new_item.second;
+    Key operativeKey = new_item.first;
+
+    if (this->root_ == NULL){
+        AVLNode<Key,Value>* temp = new AVLNode<Key,Value>(operativeKey,operativeValue,NULL);
+        if (this->empty()) { //New tree! set balance to 0.
+            temp->setBalance(0);
+            this->root_ = temp;
+        }
+        return;
+    }
+    else {
+        AVLNode<Key,Value>* operativeRoot = static_cast<AVLNode<Key, Value>*>(this->root_); //avoid working directly with data member pointer
+        AVLNode<Key,Value>* opNode = new AVLNode<Key,Value>(operativeKey,operativeValue,operativeRoot);
+        while (operativeRoot != NULL) {
+            Key focusKey = operativeRoot->getKey();
+            if (focusKey == operativeKey) { //if key already exists in tree, just switch in the value
+                for (int i = 0; i < 1; i++) {
+                    operativeRoot->setValue(operativeValue);
+                    return;
+                }
+            }
+            else if (operativeKey > focusKey) { //if key greater than current key, move right. If it was equal, then key would've been found.
+                for (int i = 0; i < 1; i++) {
+                    if (NULL == operativeRoot->getRight()) {
+                        operativeRoot->setRight(opNode);
+                        operativeRoot->updateBalance(1);
+                    }
+                }
+                operativeRoot = operativeRoot->getRight(); //move up right child
+            }
+            else if (operativeKey < focusKey) { //if key is less than current key, move left
+                for (int i = 0; i < 1; i++) {
+                    if (NULL == operativeRoot->getLeft()) { 
+                        operativeRoot->setLeft(opNode);
+                        operativeRoot->updateBalance(-1);
+                    }
+                }
+                operativeRoot = operativeRoot->getLeft(); //move up left child
+            }
+        }
+        if (operativeRoot->getBalance() == 0) {
+            //no need for action.
+            return;
+        }
+        else {
+            insertFix(operativeRoot,opNode);
+        }
+    }
 }
 
 /*
@@ -159,7 +378,7 @@ void AVLTree<Key, Value>::insert (const std::pair<const Key, Value> &new_item)
 template<class Key, class Value>
 void AVLTree<Key, Value>:: remove(const Key& key)
 {
-    // TODO
+    return;
 }
 
 template<class Key, class Value>
